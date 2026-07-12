@@ -1,6 +1,5 @@
 # Portable CI dev-pipeline for a tracked repo. Install at .github/workflows/ci.yml.
 # Stack-agnostic: auto-detects Node / Python / Go and runs the usual build+test.
-# Pairs with icm-relay.yml (which reports changes to the command-center).
 name: ci
 on:
   push:
@@ -14,23 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ---- Node ----
       - name: Detect Node
         id: node
         run: '[ -f package.json ] && echo "yes=true" >> "$GITHUB_OUTPUT" || echo "yes=false" >> "$GITHUB_OUTPUT"'
       - uses: actions/setup-node@v4
         if: steps.node.outputs.yes == 'true'
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 20 }
       - name: Node install + build + test
         if: steps.node.outputs.yes == 'true'
-        # --legacy-peer-deps so peer-dependency conflicts (common in React 19 apps)
-        # don't abort install. A failing build/test still fails CI.
         run: |
           npm ci --legacy-peer-deps 2>/dev/null || npm install --legacy-peer-deps
           npm run build --if-present
           npm test --if-present -- --passWithNoTests 2>/dev/null || npm test --if-present || true
 
-      # ---- Python ----
       - name: Detect Python
         id: py
         run: '{ [ -f requirements.txt ] || [ -f pyproject.toml ]; } && echo "yes=true" >> "$GITHUB_OUTPUT" || echo "yes=false" >> "$GITHUB_OUTPUT"'
@@ -46,7 +41,6 @@ jobs:
           pip install pytest >/dev/null 2>&1 || true
           pytest -q || echo "no tests / pytest skipped"
 
-      # ---- Go ----
       - name: Detect Go
         id: go
         run: '[ -f go.mod ] && echo "yes=true" >> "$GITHUB_OUTPUT" || echo "yes=false" >> "$GITHUB_OUTPUT"'
